@@ -1,0 +1,39 @@
+# Python
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# 输出文件
+*.txt
+!requirements.txt
+*.png
+*.jpg
+*.jpeg
+
+# 截图文件夹
+*_screenshots/
+note_screenshots/
+
+# ADB临时文件
+window_dump.xml
+
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志
+*.log
