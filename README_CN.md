@@ -2,21 +2,22 @@
 
 一个用于批量提取华为手机备忘录内容的Python脚本，支持文字提取和截图保存。
 
-English | [中文文档](README.md)
+[English](README.md) | 中文文档
+
+最新可靠性与安全修复详见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## ⚠️ 免责声明
 
-本工具仅供**个人学习和备份**使用，**严禁商业用途**。
+请仅使用本工具访问和备份你有权处理的数据。
 - 使用本工具产生的任何问题，作者不承担责任
 - 请确保你有权访问和备份自己的数据  
 - 华为官方可能随时更新UI导致脚本失效
 - 使用前建议先在少量数据上测试
-- **禁止将本工具转售或用于盈利**
 
 ## ✨ 功能特点
 
 - ✅ **三种提取模式**：全自动/最后一屏补漏/带截图模式
-- ✅ **智能去重**：基于内容去重，支持同一天多条记录
+- ✅ **保守提取**：根据列表是否移动判断进度，不丢弃正文相同的不同记录
 - ✅ **完整提取**：提取标题、时间戳、正文内容
 - ✅ **手绘支持**：截图保存手绘/图片备忘录
 - ✅ **自动命名**：根据备忘录文件夹名自动命名输出文件
@@ -66,7 +67,7 @@ python3 --version
 ### 2. 安装ADB
 
 #### Windows:
-本仓库已包含ADB工具（platform-tools文件夹），无需额外安装。
+本仓库包含 `platform-tools-latest-windows.zip`。请先在仓库根目录解压，解压后应生成 `platform-tools` 文件夹。
 
 或者从 [Google官方](https://developer.android.com/studio/releases/platform-tools) 下载最新版。
 
@@ -107,14 +108,13 @@ adb version
 
 1. **下载本仓库**：
    ```bash
-   git clone https://github.com/你的用户名/huawei-notepad-extractor.git
+   # 下载或克隆本仓库，然后进入仓库根目录
    cd huawei-notepad-extractor
    ```
 
-2. **进入ADB工具目录**（如果使用仓库自带的）：
-   ```bash
-   cd platform-tools
-   ```
+2. **仅 Windows：解压内附 ADB**（系统 `PATH` 中没有 ADB 时）：
+   - 将 `platform-tools-latest-windows.zip` 解压到仓库根目录。
+   - 不要进入 `platform-tools`；脚本会自动查找 `platform-tools/adb.exe`。
 
 3. **打开华为备忘录APP**，进入要提取的文件夹（例如"梦境记录"）
 
@@ -141,6 +141,7 @@ adb version
   2. 选择模式1，按回车
   3. 脚本自动提取直到最后一条
 - **输出**：`文件夹名.txt`
+- 已有导出不会被覆盖；重名时脚本会自动添加 `_1`、`_2` 等后缀。
 
 ### 模式2：最后一屏模式
 - **适用场景**：补漏，提取最后几条没提取到的
@@ -149,6 +150,7 @@ adb version
   2. 选择模式2，按回车
   3. 脚本提取当前屏幕的5条
 - **输出**：`文件夹名.txt`
+- 此模式会生成单独的补漏文件，不会覆盖之前的全量导出。
 
 ### 模式3：带截图模式
 - **适用场景**：有手绘/图片的备忘录
@@ -237,7 +239,7 @@ adb shell settings put system pointer_location 0
 
 ### 特殊情况
 - 📝 **纯手绘备忘录**：内容为空，但会保存截图（模式3）
-- 📝 **重复内容**：连续3次检测到相同内容，自动判定到底
+- 📝 **到底检测**：可见列表连续 3 次滑动后均未移动时自动停止
 - 📝 **时间戳**：自动提取创建/修改时间
 - 📝 **文件夹名**：自动识别华为备忘录文件夹名作为输出文件名
 
@@ -251,8 +253,8 @@ adb shell settings put system pointer_location 0
 
 ### Q: 提示"adb不是内部或外部命令"
 **A:** ADB未正确安装或未添加到PATH
-- Windows: 确保在platform-tools文件夹内运行脚本
-- 或者将platform-tools文件夹路径添加到系统环境变量
+- Windows：在仓库根目录解压内附 ZIP，脚本会自动查找 `platform-tools/adb.exe`
+- 或者将 platform-tools 文件夹路径添加到系统 `PATH`
 
 ### Q: 提示"no devices/emulators found"
 **A:** 手机未正确连接
@@ -277,8 +279,8 @@ adb shell settings put system pointer_location 0
 
 ### Q: 提取1000+条备忘录要多久？
 **A:** 
-- 模式1/2：约20-30分钟（每条约1秒）
-- 模式3：约40-60分钟（需要截图）
+- 用时取决于手机和 ADB 速度。安全的界面校验会增加耗时，大批量导出可能需要更久。
+- 模式3还要逐条传输截图，因此会更慢。
 
 ## 🤝 贡献
 
@@ -297,7 +299,8 @@ adb shell settings put system pointer_location 0
 
 **Jessica & Claude**
 - Jessica：原创思路、测试与迭代
-- Claude (Anthropic)：开发协助与优化
+- Claude (Anthropic)：初始开发协助
+- GPT-5.6 Sol (OpenAI)：可靠性与安全修复
 
 本项目展示了人类创造力与AI能力的协作。Jessica发现问题、设计解决方案并提供迭代反馈，Claude实现技术细节和优化。
 
@@ -305,7 +308,7 @@ adb shell settings put system pointer_location 0
 
 MIT License - 详见 [LICENSE](LICENSE) 文件
 
-**⚠️ 重要**：这是一个**非商业工具**。任何商业使用、转售或以盈利为目的的再分发都**严格禁止**，违反许可条款。
+本仓库采用 MIT License。请仅处理你有权访问的数据。
 
 ## 🙏 致谢
 
