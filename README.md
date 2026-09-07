@@ -4,19 +4,20 @@ A Python script for batch extracting Huawei phone notepad content with support f
 
 [中文文档](README_CN.md) | English
 
+See [CHANGELOG.md](CHANGELOG.md) for the latest reliability and security fixes.
+
 ## ⚠️ Disclaimer
 
-This tool is for **personal learning and backup purposes only**. **Commercial use is strictly prohibited.**
+Only use this tool to access and back up data that you are authorized to handle.
 - The author assumes no responsibility for any issues arising from the use of this tool
 - Ensure you have the right to access and back up your own data
 - Huawei may update the UI at any time, which could cause the script to fail
 - It is recommended to test on a small amount of data first
-- **Reselling or redistributing this tool for profit is prohibited**
 
 ## ✨ Features
 
 - ✅ **Three extraction modes**: Full auto / Last screen / With screenshots
-- ✅ **Smart deduplication**: Content-based deduplication, supports multiple entries on the same day
+- ✅ **Conservative extraction**: Tracks list movement without discarding distinct notes that share text
 - ✅ **Complete extraction**: Extracts title, timestamp, and body content
 - ✅ **Handwriting support**: Save screenshots of handwritten/image notes
 - ✅ **Auto-naming**: Automatically names output files based on notepad folder name
@@ -66,7 +67,7 @@ python3 --version
 ### 2. Install ADB
 
 #### Windows:
-This repository includes ADB tools (platform-tools folder), no additional installation required.
+This repository includes `platform-tools-latest-windows.zip`. Extract it in the repository root first; this should create a `platform-tools` folder.
 
 Or download the latest version from [Google Official](https://developer.android.com/studio/releases/platform-tools).
 
@@ -107,14 +108,13 @@ adb version
 
 1. **Download this repository**:
    ```bash
-   git clone https://github.com/yourusername/huawei-notepad-extractor.git
+   # Download/clone this repository, then enter its root directory
    cd huawei-notepad-extractor
    ```
 
-2. **Enter ADB tools directory** (if using the bundled version):
-   ```bash
-   cd platform-tools
-   ```
+2. **Windows only: extract bundled ADB** (if ADB is not already in `PATH`):
+   - Extract `platform-tools-latest-windows.zip` into the repository root.
+   - Stay in the repository root; the script automatically locates `platform-tools/adb.exe`.
 
 3. **Open Huawei Notepad app**, navigate to the folder you want to extract (e.g., "Dream Records")
 
@@ -141,6 +141,7 @@ adb version
   2. Select mode 1 and press Enter
   3. Script automatically extracts until the last entry
 - **Output**: `FolderName.txt`
+- Existing exports are never overwritten; the script adds `_1`, `_2`, etc. when needed.
 
 ### Mode 2: Last Screen
 - **Use case**: Fill in missing entries, extract the last few notes
@@ -149,6 +150,7 @@ adb version
   2. Select mode 2 and press Enter
   3. Script extracts 5 entries from current screen
 - **Output**: `FolderName.txt`
+- This mode writes a separate export and does not overwrite a previous full export.
 
 ### Mode 3: With Screenshots
 - **Use case**: Notes with handwriting/images
@@ -237,7 +239,7 @@ adb shell settings put system pointer_location 0
 
 ### Special Cases
 - 📝 **Pure handwritten notes**: Content is empty but screenshot is saved (mode 3)
-- 📝 **Duplicate content**: Automatically detects bottom when same content found 3 times consecutively
+- 📝 **Bottom detection**: Stops after the visible list fails to move for 3 consecutive swipes
 - 📝 **Timestamp**: Automatically extracts creation/modification time
 - 📝 **Folder name**: Automatically recognizes Huawei notepad folder name as output filename
 
@@ -251,8 +253,8 @@ adb shell settings put system pointer_location 0
 
 ### Q: Error "adb is not recognized as an internal or external command"
 **A:** ADB not properly installed or not in PATH
-- Windows: Ensure script is run from within platform-tools folder
-- Or add platform-tools folder path to system environment variables
+- Windows: Extract the bundled ZIP in the repository root; the script will locate `platform-tools/adb.exe` automatically
+- Or add the platform-tools folder to the system `PATH`
 
 ### Q: Error "no devices/emulators found"
 **A:** Phone not properly connected
@@ -277,8 +279,8 @@ adb shell settings put system pointer_location 0
 
 ### Q: How long to extract 1000+ notes?
 **A:** 
-- Mode 1/2: About 20-30 minutes (~1 second per note)
-- Mode 3: About 40-60 minutes (requires screenshots)
+- Duration depends on the phone and ADB speed. UI verification adds safety but may make large exports take longer.
+- Mode 3 takes longer because every note also requires a screenshot transfer.
 
 ## 🤝 Contributing
 
@@ -297,7 +299,8 @@ Issues and Pull Requests are welcome!
 
 **Jessica & Claude**
 - Jessica: Original concept, testing, and iteration
-- Claude (Anthropic): Development assistance and optimization
+- Claude (Anthropic): Initial development assistance
+- GPT-5.6 Sol (OpenAI): Reliability and security fixes
 
 This project demonstrates the collaboration between human creativity and AI capabilities. Jessica identified the problem, designed the solution approach, and provided iterative feedback, while Claude implemented the technical details and optimizations.
 
@@ -305,7 +308,7 @@ This project demonstrates the collaboration between human creativity and AI capa
 
 MIT License - See [LICENSE](LICENSE) file for details
 
-**⚠️ Important**: This is a **non-commercial tool**. Any commercial use, resale, or redistribution for profit is **strictly prohibited** and violates the license terms.
+The repository is distributed under the MIT License. Please only process data you are authorized to access.
 
 ## 🙏 Acknowledgments
 
