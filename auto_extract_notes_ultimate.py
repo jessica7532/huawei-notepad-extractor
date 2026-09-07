@@ -48,15 +48,25 @@ def find_adb():
 
 
 ADB = None
+DEVICE_SERIAL = None
+
+
+def adb_command(*args):
+    """构造锁定到已检查设备的 ADB 命令。"""
+    if ADB is None:
+        raise ExtractionError("ADB 尚未初始化。")
+    command = [ADB]
+    if DEVICE_SERIAL:
+        command.extend(["-s", DEVICE_SERIAL])
+    command.extend(args)
+    return command
 
 
 def adb(cmd):
     """在唯一已连接设备上执行 shell 命令，失败时立即停止。"""
-    if ADB is None:
-        raise ExtractionError("ADB 尚未初始化。")
     args = cmd.split() if isinstance(cmd, str) else list(cmd)
     result = subprocess.run(
-        [ADB, "shell", *args],
+        adb_command("shell", *args),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -71,6 +81,10 @@ def adb(cmd):
 
 def check_device():
     """确保恰好有一台已授权设备，避免操作错设备。"""
+    global DEVICE_SERIAL
+    DEVICE_SERIAL = None
+    if ADB is None:
+        raise ExtractionError("ADB 尚未初始化。")
     result = subprocess.run(
         [ADB, "devices"],
         capture_output=True,
@@ -93,6 +107,7 @@ def check_device():
         raise ExtractionError(
             f"需要且只能连接一台已授权设备，当前检测到 {len(devices)} 台{detail}"
         )
+    DEVICE_SERIAL = devices[0]
 
 
 def tap(x, y):
@@ -116,7 +131,7 @@ def dump_ui():
     adb(["rm", "-f", "/sdcard/window_dump.xml"])
     adb(["uiautomator", "dump", "/sdcard/window_dump.xml"])
     result = subprocess.run(
-        [ADB, "exec-out", "cat", "/sdcard/window_dump.xml"],
+        adb_command("exec-out", "cat", "/sdcard/window_dump.xml"),
         capture_output=True,
         timeout=30,
     )
@@ -186,11 +201,12 @@ def safe_name(name):
     """把用户或手机提供的名称限制为当前目录中的安全文件名。"""
     cleaned = "".join("_" if c in '<>:"/\\|?*' or ord(c) < 32 else c for c in name)
     cleaned = cleaned.strip(" .")[:120].rstrip(" .")
-    reserved = {"CON", "PRN", "AUX", "NUL"}
+    reserved = {"CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"}
     reserved.update(
         f"{prefix}{number}" for prefix in ("COM", "LPT") for number in range(1, 10)
     )
-    if cleaned.upper() in reserved:
+    # Windows 也会把 CON.txt、LPT1.backup 等视为保留设备名。
+    if cleaned.partition(".")[0].upper() in reserved:
         cleaned = f"_{cleaned}"
     return cleaned or "华为备忘录导出"
 
@@ -198,11 +214,11 @@ def safe_name(name):
 def unused_path(path):
     """避免无提示覆盖已有备份。"""
     path = Path(path)
-    if not path.exists():
+    if not path.exists() and not path.is_symlink():
         return path
     for number in range(1, 10000):
         candidate = path.with_name(f"{path.stem}_{number}{path.suffix}")
-        if not candidate.exists():
+        if not candidate.exists() and not candidate.is_symlink():
             return candidate
     raise ExtractionError("无法生成未占用的输出文件名。")
 
@@ -210,7 +226,7 @@ def unused_path(path):
 def take_screenshot(destination):
     adb(["screencap", "-p", "/sdcard/temp_screenshot.png"])
     result = subprocess.run(
-        [ADB, "pull", "/sdcard/temp_screenshot.png", str(destination)],
+        adb_command("pull", "/sdcard/temp_screenshot.png", str(destination)),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -281,7 +297,7 @@ def main():
         # 实测坐标：只点前5个位置，避免点到屏幕底部
         POSITIONS = [640, 880, 1140, 1395, 1654]
 
-        with open(output_file, "w", encoding="utf-8") as f:
+        with open(output_file, "x", encoding="utf-8") as f:
             f.write("华为备忘录导出（最后一屏）\n")
             f.write(f"导出时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 50 + "\n\n")
@@ -323,7 +339,7 @@ def main():
 
         # 创建截图文件夹
         screenshot_dir = unused_path(f"{screenshot_dir_base}_screenshots")
-        os.makedirs(screenshot_dir, exist_ok=True)
+        os.makedirs(screenshot_dir)
 
         extracted = 0
         processed_positions = set()
@@ -331,7 +347,7 @@ def main():
         skip_count = 0
         iteration = 0
 
-        with open(output_file, "w", encoding="utf-8") as f:
+        with open(output_file, "x", encoding="utf-8") as f:
             f.write("华为备忘录导出（带截图）\n")
             f.write(f"导出时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 50 + "\n\n")
@@ -472,7 +488,7 @@ def main():
         skip_count = 0
         iteration = 0
 
-        with open(output_file, "w", encoding="utf-8") as f:
+        with open(output_file, "x", encoding="utf-8") as f:
             f.write("华为备忘录导出（全量）\n")
             f.write(f"导出时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 50 + "\n\n")
