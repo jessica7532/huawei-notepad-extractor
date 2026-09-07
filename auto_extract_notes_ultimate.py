@@ -176,7 +176,7 @@ def ui_signature(root):
 def get_note():
     """用同一次 UI 快照取得标题、时间和正文，并确认确实在详情页。"""
     root = dump_ui()
-    title, has_title = node_text(root, "title")
+    title, _has_title = node_text(root, "title")
     timestamp, has_timestamp = node_text(root, "notecontent_date_text")
     content, has_content = node_text(root, "notetext_textview")
     # 列表页也可能含有 title 节点；时间或正文节点才足以证明已进入详情页。
