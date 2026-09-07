@@ -12,6 +12,10 @@ import auto_extract_notes_ultimate as extractor
 
 
 class ExtractorTests(unittest.TestCase):
+    def tearDown(self):
+        extractor.ADB = None
+        extractor.DEVICE_SERIAL = None
+
     def test_import_has_no_device_side_effects(self):
         self.assertIsNone(extractor.ADB)
 
@@ -55,7 +59,34 @@ class ExtractorTests(unittest.TestCase):
         self.assertEqual(extractor.safe_name("..."), "华为备忘录导出")
         self.assertNotIn("/", extractor.safe_name("a/b"))
         self.assertEqual(extractor.safe_name("CON"), "_CON")
+        self.assertEqual(extractor.safe_name("CON.txt"), "_CON.txt")
+        self.assertEqual(extractor.safe_name("LPT1.backup"), "_LPT1.backup")
         self.assertEqual(extractor.safe_name("notes. "), "notes")
+
+    def test_check_device_locks_subsequent_commands_to_authorized_serial(self):
+        extractor.ADB = "adb"
+        devices = subprocess.CompletedProcess(
+            [],
+            0,
+            stdout=(
+                "List of devices attached\n"
+                "phone-serial\tdevice\n"
+                "pending-serial\tunauthorized\n"
+            ),
+            stderr="",
+        )
+        with mock.patch("subprocess.run", return_value=devices):
+            extractor.check_device()
+
+        self.assertEqual(extractor.DEVICE_SERIAL, "phone-serial")
+
+        completed = subprocess.CompletedProcess([], 0, stdout="", stderr="")
+        with mock.patch("subprocess.run", return_value=completed) as run:
+            extractor.adb(["input", "tap", "1", "2"])
+        self.assertEqual(
+            run.call_args.args[0],
+            ["adb", "-s", "phone-serial", "shell", "input", "tap", "1", "2"],
+        )
 
     def test_unused_path_never_overwrites_existing_export(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -64,6 +95,16 @@ class ExtractorTests(unittest.TestCase):
             second = extractor.unused_path(first)
             self.assertEqual(second.name, "notes_1.txt")
             self.assertEqual(first.read_text(encoding="utf-8"), "keep")
+
+    def test_unused_path_does_not_follow_a_broken_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            first = Path(directory) / "notes.txt"
+            try:
+                first.symlink_to(Path(directory) / "missing-target.txt")
+            except OSError as exc:
+                self.skipTest(f"symlinks are unavailable: {exc}")
+            second = extractor.unused_path(first)
+            self.assertEqual(second.name, "notes_1.txt")
 
     def test_adb_uses_argument_list_and_surfaces_failure(self):
         extractor.ADB = "adb"
@@ -97,6 +138,7 @@ class ExtractorTests(unittest.TestCase):
 
     def test_screenshot_path_is_passed_as_one_argument_without_shell(self):
         extractor.ADB = "adb"
+        extractor.DEVICE_SERIAL = "phone-serial"
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / 'note";echo unsafe.png'
 
@@ -109,7 +151,17 @@ class ExtractorTests(unittest.TestCase):
                 mock.patch("subprocess.run", side_effect=fake_run) as run,
             ):
                 extractor.take_screenshot(destination)
-            self.assertEqual(run.call_args.args[0][-1], str(destination))
+            self.assertEqual(
+                run.call_args.args[0],
+                [
+                    "adb",
+                    "-s",
+                    "phone-serial",
+                    "pull",
+                    "/sdcard/temp_screenshot.png",
+                    str(destination),
+                ],
+            )
             self.assertNotIn("shell", run.call_args.kwargs)
         extractor.ADB = None
 
